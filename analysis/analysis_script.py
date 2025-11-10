@@ -319,20 +319,27 @@ def perclass_accuracy(y_true, y_pred, classes, metric='acc'):
     true_neg = {}
     pos = {}
     neg = {}
+    false_pos = {}
+    false_pos = {}
     true_pos_rate = {}
     for r in range(len(cm)):
         total = 0
+        tn = 0
         for c in range(len(cm)):
             if r == c:
                 diag = cm[r,c]
                 true_pos[r] = diag
             total += cm[r,c]
+
         pos[r]  = total
+        
         # print(r, diag, total)
         # if total != 0:
         true_pos_rate[r] = diag / total
+        
         # else:
         #     true_pos_rate[r] = 1.0
+
     return true_pos_rate, true_pos, pos
 
 def sanity_check(data):
@@ -346,6 +353,76 @@ def sanity_check(data):
                         if np.var(data[pid][phase]['x'][i]) < 0.1:
                             print('pb', pid, phase, i, np.var(data[pid][phase]['x'][i]), data[pid][phase]['x'][i])
                     # print(pid, phase, data[pid][phase]['x'][i])
+
+def check_init_acc(data, 
+                 models,perclass = True):
+  
+    acc = []
+    if perclass:
+        data_sns = {'pid': [], 'condition': [], 'class': [], 'accuracy': []}
+    else:
+        data_sns = {'pid': [], 'condition': [], 'accuracy': []}
+    for pid in data.keys():
+        print(data[pid]['cond'])
+        X = np.array(data[pid]['training']['x'])
+        y = np.array(data[pid]['training']['y'])
+    
+        acc_ = []
+            
+        classifier = models[pid]['init']
+        # classifier = LinearDiscriminantAnalysis()
+        X = np.array(data[pid]['training']['x'])[0:16,:]
+        y = np.array(data[pid]['training']['y'])[0:16]
+        # classifier.fit(X, y)
+        
+        if not perclass:
+            
+            data_sns['pid'].append(pid)
+            data_sns['condition'].append(data[pid]['cond'])
+            data_sns['accuracy'].append(
+                classifier.score(
+                    np.array(data[pid]['posttest']['x']),
+                    np.array(data[pid]['posttest']['y'])))
+        else:
+            
+            cm = confusion_matrix(
+                np.array(data[pid]['posttest']['y']), 
+                classifier.predict(np.array(data[pid]['posttest']['x'])), 
+                labels=classifier.classes_)
+            
+            acc_2 = []
+            for r in range(len(cm)):
+                total = 0
+                for c in range(len(cm)):
+                    if r == c:
+                        diag = cm[r,c]
+                    total += cm[r,c]
+                data_sns['pid'].append(pid)
+                data_sns['condition'].append(data[pid]['cond'])
+                data_sns['class'].append(classifier.classes_[r])
+                if total != 0:
+                    data_sns['accuracy'].append(diag/total)
+                else:
+                    data_sns['accuracy'].append(1.0)
+                acc_2.append(diag/total)
+            acc_.append(np.mean(acc_2))        
+    acc.append(acc_)          
+        
+    # acc = np.array(acc)
+    
+    # plt.plot(np.mean(acc, axis=0), '-')
+    # plt.show()
+
+    # new_data = data_sns
+ 
+    print(data_sns['condition'])
+    df = pd.DataFrame(data_sns)
+    mean_rc = df[df['condition']=='NUC']['accuracy'].mean()
+    mean_tlc = df[df['condition']=='UC']['accuracy'].mean()
+    mean_llc = df[df['condition']=='NUCS']['accuracy'].mean()
+    print(mean_rc,mean_tlc,mean_llc)
+    sns.barplot(data=df, x='condition', y='accuracy', hue='condition')
+    plt.show()
 
 def check_uc_acc(data, 
                  models):
@@ -457,11 +534,12 @@ def compute_clf_accuracy(data,
                             np.array(data[pid][test_phase]['x']),
                             np.array(data[pid][test_phase]['y'])))
                 else:
-                    perclass_acc = perclass_accuracy(
+                    perclass_acc,_,_ = perclass_accuracy(
                         np.array(data[pid][test_phase]['y']),
                         classifier.predict(np.array(data[pid][test_phase]['x'])), 
                         classifier.classes_
                     )
+                    print(perclass_acc)
                     for k in perclass_acc.keys():
                         data_sns['pid'].append(pid)
                         data_sns['condition'].append(data[pid]['cond'])
@@ -587,6 +665,10 @@ def compute_clf_accuracy(data,
                             data_sns['accuracy'].append(1.0)
 
         filename ='accuracy_along_training' 
+        for k in np.unique(data_sns['condition']):
+            idx = np.where(np.array(data_sns['condition']) == k)[0]
+            m = np.mean(np.array(data_sns['accuracy'])[idx])
+            print(k, m)
 
         if offset:
             filename += '_offset'
@@ -913,6 +995,7 @@ def compute_separability(data,
         plt.show()
 
     else:
+        print("using models")
         data_sns = {
             'pid': [], 
             'condition': [], 
@@ -930,6 +1013,7 @@ def compute_separability(data,
             batch_size = 49
             overlap_size = 1
             for trial in range(17, len(X), overlap_size):
+                print(trial)
                 inst_per_class = int(np.min([batch_size, trial]) / 8)
                 idxes = []
                 for c in np.unique(y):
@@ -1453,6 +1537,7 @@ def compute_pos_neg_metric(data,
                     else:
                         data_sns['type'].append('True Negative Rate')
                         data_sns['rate'].append((p[k] - tp[k])/p[k])
+                        #data_sns['rate'].append(tn[k]/p[k])
         # else:
         #     fscore = {}
         #     false_negatives = {}
@@ -1675,8 +1760,7 @@ def questionnaire(filename):
         # #     print(row)
 
 def learning_rate(data,models):
-    
-    data_sns = {'pid': [], 'condition': [], 'lr': [], 'intercept': []}
+    data_sns = {'pid': [], 'condition': [], 'learning rate': [], 'intercept': []}
     data_sns2 = {'pid': [], 'condition': [], 'trial': [], 'accuracy': []}
     for pid in data.keys():
         
@@ -1702,9 +1786,10 @@ def learning_rate(data,models):
 
         data_sns['pid'].append(pid)
         data_sns['condition'].append(data[pid]['cond'])
+        print(acc)
         slope, intercept, r, p, std_err = stats.linregress(
-            np.log(np.arange(17, len(X))), np.log(1.0/np.array(acc)))
-        data_sns['lr'].append(slope)
+            np.log(np.arange(17, len(X))), np.log(np.array(acc)))
+        data_sns['learning rate'].append(slope)
         data_sns['intercept'].append(intercept)
     
     # for k in np.unique(data_sns['condition']):
@@ -1738,7 +1823,7 @@ def learning_rate(data,models):
     # plt.plot(np.arange(0, len(X)-17), np.log(intercept + np.arange(0, len(X)-17) * 1.8))
     # plt.show()
 
-    new_data = remove_outliers(data_sns, factors=['condition'], measure='lr')
+    new_data = remove_outliers(data_sns, factors=['condition'], measure='learning rate')
 
     with open('lr.csv', 'w') as f: 
         keys = new_data.keys()
@@ -1751,10 +1836,10 @@ def learning_rate(data,models):
             w.writerow(row_to_write)
 
     df = pd.DataFrame(new_data)
-    model = ols('lr ~ C(condition)', data=df).fit()
-    print(sm.stats.anova_lm(model, typ=1)) 
+    # model = ols('lr ~ C(condition)', data=df).fit()
+    # print(sm.stats.anova_lm(model, typ=1)) 
 
-    sns.barplot(data=df, x='condition', y='lr')
+    sns.barplot(data=df, x='condition', y='learning rate',palette='Set2',capsize=.1,order=['NUC', 'UC', 'NUCS'])
     # plt.title("retrained models - anova's pvalue={:.3f}".format(pval))
     # plt.savefig('model_accuracy_testset={}_perclass={}_plot={}.png'.format(test_phase, perclass, type_of_plot))
     plt.show()
@@ -1764,14 +1849,32 @@ def plot_csv(filename):
     sns.barplot(data=accs, x='condition', y='accuracy')
     plt.show()
 
+def plot_distribution(data):
+    y = {}
+    #print(data)
+    for pid in data.keys():
+        for val in np.array(data[pid]['training']['y']):
+            if(val not in y.keys()):
+                y[val] = 0
+            y[val] += 1
+    #print(y)
+    dict_of_dicts ={'UC':{},'NUC':{},'NUCS':{}}
+    for cond in ['UC','NUC','NUCS']:
+        for pid in data.keys():  
+            if data[pid]['cond'] == cond:
+                #storing gestures in ascending order in dictionary
+                dict_of_dicts[cond]= y
+        
+    for cond in dict_of_dicts.keys():
+        print(cond, ':' ,dict_of_dicts[cond])
 
 if __name__ == "__main__":
     # folder path
     dir_path = 'data'
     data, models = load_data(dir_path)
-    
+    # plot_distribution(data)
     # sanity_check(data)
-
+    learning_rate(data, models)
     # # Accuarcy analysis
     # # -----------------
     # print('\n[Accuracy analysis]')
@@ -1780,7 +1883,7 @@ if __name__ == "__main__":
     #     "test_phase": 'posttest',
     #     "model_t": None,
     #     "perclass": True,
-    #     "offset": True,
+    #     "offset": False,
     #     "type_of_plot": 'barplot'
     # }
     # print('** test config\n', accuracy_analysis_config)
@@ -1790,10 +1893,10 @@ if __name__ == "__main__":
     #     **accuracy_analysis_config)
 
     # check_uc_acc(data, models)
-
+    # check_init_acc(data,models)
 
     # CORRELATIONS
-    correlations(data, models, 120, perclass=True)
+    # correlations(data, models, 120, perclass=True)
 
 
     # # CONFUSION
@@ -1838,7 +1941,7 @@ if __name__ == "__main__":
     # # ---------------------
     # print('\n[Separability analysis]')
     # sep_analysis = {
-    #     "type_of_sep": 'raw',
+    #     "type_of_sep": 'lda',
     #     "data_phase": 'training', 
     #     "model_t": None,
     #     "perclass": True,
