@@ -8,11 +8,21 @@ The core research question addresses whether the order and method of presenting 
 
 ## Methodology
 
-The experiment evaluates three modes of learning:
+The experiment evaluates three learning strategies:
 
-1. **Random Curriculum (RC)** - The system cues gesture classes randomly (control condition)
-2. **User Choice Curriculum (UCC)** - The user selects gesture classes to practice (teacher-led approach)
-3. **Gesture Separability Curriculum (GSC)** - The system queries gesture classes based on their separability in classifier space (learner-led approach)
+1. **Random Curriculum (RC)** - The system cues gesture classes randomly (control)
+2. **User Choice Curriculum (UCC)** - The user selects gesture classes to practice 
+3. **Gesture Separability Curriculum (GSC)** - The system queries gesture classes based on their separability in classifier space
+
+## Metrics
+
+1. **Learning analytics** - 
+   (i) Evolution of classification accuracy over 120 trials
+   <!-- (ii) Delta accuracy: final accuracy − initial accuracy per user and per strategy -->
+   (ii) Learning rate per strategy: Learning curves often follow a power-law.
+   Linear regression on learning data transforms the learning function into a straight line, which can be analyzed. 
+   The slope gives the learning rate, a steeper positive slope → faster improvement in performance.
+2. **User understanding / mental model** - Performance on post-training functional tests.    Reflects how well users understand how the prosthesis interprets their movements.
 
 ### Technical Implementation
 
@@ -36,25 +46,25 @@ The system recognizes the following gestures:
 
 ## Results
 
-### Model Accuracy
+<!-- ### Model Accuracy
 
-![Model Accuracy](public/images/final_accuracy_comparison.png)
+![Model Accuracy](public/images/final_accuracy_comparison.png) -->
 
-### Accuracy Improvement Over Training
+### Evolution of classification accuracy
 
-![Accuracy Improvement Over Training](public/images/accuracy_over_trials_plot.png)
+![Accuracy Improvement Over Training](public/images/accuracy_across_trials_by_strategy.png)
 
-### Delta Accuracy
+<!-- ### Delta Accuracy
 
-![Delta Accuracy](public/images/delta_accuracy_plot.png)
+![Delta Accuracy](public/images/delta_accuracy.png) -->
 
 ### Learning Rates
 
-![Learning Rates](public/images/Learning_rates.png)
+![Learning Rates](public/images/Learning_rates_by_strategy.png)
 
-### Positive/Negative Classification Rates
+### Functional/Test accuracy after training
 
-![Positive/Negative Classification Rates](public/images/TPN_TNR_plots.png)
+![Functional/Test accuracy after training](public/images/TPR_comparison.png)
 
 ## Conclusion
 Our study demonstrates that the adaptive system-driven strategy (Gesture Separability Condition), which selects gesture classes to maximize separability, yielded the fastest and largest improvement in model accuracy compared to random and user-driven (User Choice Condition) training.
